@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Accenture Fast Math Assessment</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #f4f4f4;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* UI Overlay Layer */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            z-index: 5;
+        }
+
+        /* Header: Score and Level */
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* The Central Instruction (The Twist) */
+        #instruction-container {
+            position: absolute;
+            top: 12%; 
+            left: 0; 
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        #instruction-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 30px;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        #rule-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: block;
+        }
+
+        #rule-icon {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Footer: Timer */
+        #timer-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+        }
+
+        /* Screens (Start, Game Over) */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(244, 244, 244, 0.98);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 10;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        button {
+            background: #a100ff;
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(161, 0, 255, 0.3);
+            transition: transform 0.1s, background 0.2s;
+            font-weight: bold;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        canvas {
+            display: block;
+        }
+        
+        /* Mobile tweaks */
+        @media (max-height: 600px) {
+            #instruction-container { top: 15%; }
+            #timer-container { bottom: 10px; transform: translateX(-50%) scale(0.8); }
+            h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas for Game Rendering -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Heads Up Display -->
+    <div id="ui-layer">
+        <div class="header-info">
+            <div id="score-display">Score: 0</div>
+            <div id="round-display">Round: 1</div>
+        </div>
+        
+        <div id="instruction-container">
+            <div id="instruction-panel">
+                <span id="rule-icon">⬆️</span>
+                <span id="rule-text">Lowest to Highest</span>
+            </div>
+        </div>
+
+        <div id="timer-container">
+            <svg width="70" height="70" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#e0e0e0" stroke-width="8" />
+                <circle id="timer-bar" cx="50" cy="50" r="45" fill="none" stroke="#a100ff" stroke-width="8" 
+                        stroke-dasharray="283" stroke-dashoffset="0" transform="rotate(-90 50 50)" />
+                <text id="timer-text" x="50" y="58" text-anchor="middle" font-family="Roboto" font-size="24" fill="#333" font-weight="bold">300</text>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen">
+        <h1>Fast Math Challenge</h1>
+        <p>Evaluate the bubbles and click them in the correct order.<br><br>
+           <strong>The Twist:</strong> The sorting rule changes! Watch the top panel for "Lowest to Highest" or "Highest to Lowest".</p>
+        <button onclick="startGame()">Start Assessment</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="screen hidden">
+        <h1>Time's Up!</h1>
+        <p id="final-score">Final Score: 0</p>
+        <button onclick="startGame()">Try Again</button>
+    </div>
+
+    <script>
+        /** CONFIGURATION **/
+        const CONFIG = {
+            initialTime: 300, // 5 minutes
+            bubbleCount: 3, 
+            colors: {
+                bubble: '#ffffff',
+                text: '#333333',
+                shadow: 'rgba(0,0,0,0.1)',
+                correct: '#4CAF50',
+                wrong: '#F44336'
+            },
+            fontBaseSize: 24
+        };
+
+        /** GAME STATE **/
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        let gameState = {
+            isPlaying: false,
+            score: 0,
+            round: 1,
+            timeLeft: CONFIG.initialTime,
+            bubbles: [],
+            particles: [],
+            sortOrder: 'asc',
+            lastTime: 0
+        };
+
+        /** RESIZE HANDLING - The Core of Responsiveness **/
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        /** LAYOUT CALCULATOR **/
+        // This ensures bubbles are always centered and form a nice shape relative to screen size
+        function getBubblePosition(index, total) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Determine a "safe zone" size based on the smaller screen dimension
+            // This prevents bubbles from being too spread out on wide screens
+            // or off-screen on small screens.
+            const minDim = Math.min(width, height);
+            const spread = minDim * 0.25; // Distance from center
+            const verticalOffset = minDim * 0.05; // Shift slightly down to clear UI header
+
+            if (total === 3) {
+                // Triangle Formation
+                if (index === 0) return { x: centerX, y: centerY - spread + verticalOffset }; // Top
+                if (index === 1) return { x: centerX - spread, y: centerY + (spread * 0.6) + verticalOffset }; // Bottom Left
+                if (index === 2) return { x: centerX + spread, y: centerY + (spread * 0.6) + verticalOffset }; // Bottom Right
+            }
+            
+            // Fallback for other counts (just random within safe zone)
+            return {
+                x: centerX + (Math.random() - 0.5) * spread * 2,
+                y: centerY + (Math.random() - 0.5) * spread * 2
+            };
+        }
+
+        /** MATH LOGIC **/
+        function generateMathExpression(difficulty) {
+            const ops = ['+', '-', '*', '/'];
+            let val1, val2, op, value;
+
+            // Progression Logic
+            if (difficulty <= 3) {
+                value = Math.floor(Math.random() * 20) + 1;
+                return { text: value.toString(), value: value };
+            }
+            
+            if (difficulty <= 7) {
+                op = Math.random() > 0.5 ? '+' : '-';
+                val1 = Math.floor(Math.random() * 20) + 5;
+                val2 = Math.floor(Math.random() * 5) + 1;
+                value = op === '+' ? val1 + val2 : val1 - val2;
+                return { text: `${val1} ${op} ${val2}`, value: value };
+            }
+
+            op = ops[Math.floor(Math.random() * 4)];
+            if(op === '*') {
+                val1 = Math.floor(Math.random() * 9) + 2;
+                val2 = Math.floor(Math.random() * 5) + 2;
+                value = val1 * val2;
+            } else if (op === '/') {
+                val2 = Math.floor(Math.random() * 4) + 2;
+                value = Math.floor(Math.random() * 10) + 2;
+                val1 = value * val2;
+            } else {
+                return generateMathExpression(5);
+            }
+            return { text: `${val1} ${op} ${val2}`, value: value };
+        }
+
+        function spawnBubbles() {
+            gameState.bubbles = [];
+            let usedValues = new Set();
+
+            gameState.sortOrder = Math.random() > 0.5 ? 'asc' : 'desc';
+            updateRuleUI();
+
+            for (let i = 0; i < CONFIG.bubbleCount; i++) {
+                let content;
+                do {
+                    content = generateMathExpression(gameState.round);
+                } while (usedValues.has(content.value));
+                
+                usedValues.add(content.value);
+                
+                // Pass the 'index' so the Bubble knows where it belongs in the formation
+                gameState.bubbles.push(new Bubble(i, content));
+            }
+        }
+
+        function updateRuleUI() {
+            const ruleText = document.getElementById('rule-text');
+            const ruleIcon = document.getElementById('rule-icon');
+            
+            if(gameState.sortOrder === 'asc') {
+                ruleText.innerText = "Lowest to Highest";
+                ruleIcon.innerText = "1️⃣ ➡ 🔟";
+                ruleText.style.color = "#333";
+            } else {
+                ruleText.innerText = "Highest to Lowest";
+                ruleIcon.innerText = "🔟 ➡ 1️⃣";
+                ruleText.style.color = "#D32F2F";
+            }
+        }
+
+        /** CLASSES **/
+        class Bubble {
+            constructor(index, content) {
+                this.index = index; // Store index to calculate position dynamically
+                this.content = content;
+                this.radius = 0; // Calculated dynamically
+                this.color = CONFIG.colors.bubble;
+                this.scale = 0;
+                this.targetScale = 1;
+                this.shakeOffset = 0;
+                
+                // Set initial position
+                const pos = getBubblePosition(this.index, CONFIG.bubbleCount);
+                this.x = pos.x;
+                this.y = pos.y;
+            }
+
+            update() {
+                // 1. Dynamic Sizing: Bubble size depends on screen size
+                const minDim = Math.min(width, height);
+                this.radius = minDim * 0.13; // 13% of smallest screen dimension
+
+                // 2. Dynamic Positioning: Always move to correct layout spot
+                const targetPos = getBubblePosition(this.index, CONFIG.bubbleCount);
+                
+                // Smooth lerp to position (in case of window resize)
+                this.x += (targetPos.x - this.x) * 0.2;
+                this.y += (targetPos.y - this.y) * 0.2;
+
+                // 3. Animation logic
+                if (this.scale < this.targetScale) this.scale += 0.1;
+                
+                if (Math.abs(this.shakeOffset) > 0) {
+                    this.shakeOffset *= -0.8;
+                    if(Math.abs(this.shakeOffset) < 1) this.shakeOffset = 0;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x + this.shakeOffset, this.y);
+                ctx.scale(this.scale, this.scale);
+
+                // Shadow
+                ctx.beginPath();
+                ctx.arc(5, 5, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = CONFIG.colors.shadow;
+                ctx.fill();
+
+                // Bubble Body
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Border
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Text
+                ctx.fillStyle = CONFIG.colors.text;
+                // Dynamic font size
+                const fontSize = Math.max(16, this.radius * 0.4); 
+                ctx.font = `bold ${fontSize}px Roboto`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.content.text, 0, 0);
+
+                ctx.restore();
+            }
+
+            triggerError() {
+                this.shakeOffset = 20;
+                this.color = '#ffebee';
+                setTimeout(() => this.color = CONFIG.colors.bubble, 300);
+            }
+        }
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.life = 1;
+                this.dx = (Math.random() - 0.5) * 10;
+                this.dy = (Math.random() - 0.5) * 10;
+                this.radius = Math.random() * 5 + 2;
+                this.color = CONFIG.colors.correct;
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.life -= 0.05;
+            }
+
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        /** INPUT HANDLING **/
+        function handleInput(e) {
+            if (!gameState.isPlaying) return;
+
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            if (e.type === 'touchstart') {
+                // Prevent default to stop scrolling/zooming on double tap
+                e.preventDefault(); 
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            let sortedBubbles = [...gameState.bubbles].sort((a, b) => {
+                return gameState.sortOrder === 'asc' 
+                    ? a.content.value - b.content.value 
+                    : b.content.value - a.content.value;
+            });
+
+            const targetBubble = sortedBubbles[0];
+
+            for (let i = 0; i < gameState.bubbles.length; i++) {
+                const b = gameState.bubbles[i];
+                const dist = Math.hypot(b.x - x, b.y - y);
+
+                if (dist < b.radius) {
+                    if (b === targetBubble) {
+                        handleCorrect(b);
+                    } else {
+                        handleIncorrect(b);
+                    }
+                    break; 
+                }
+            }
+        }
+
+        function handleCorrect(bubble) {
+            gameState.score += 10;
+            document.getElementById('score-display').innerText = `Score: ${gameState.score}`;
+
+            for(let i=0; i<15; i++) {
+                gameState.particles.push(new Particle(bubble.x, bubble.y));
+            }
+
+            gameState.bubbles = gameState.bubbles.filter(b => b !== bubble);
+
+            if (gameState.bubbles.length === 0) {
+                gameState.round++;
+                document.getElementById('round-display').innerText = `Round: ${gameState.round}`;
+                spawnBubbles();
+            }
+        }
+
+        function handleIncorrect(bubble) {
+            bubble.triggerError();
+            gameState.timeLeft -= 3; 
+            gameState.score = Math.max(0, gameState.score - 5);
+            document.getElementById('score-display').innerText = `Score: ${gameState.score}`;
+            
+            ctx.fillStyle = "rgba(255,0,0,0.1)";
+            ctx.fillRect(0,0,width,height);
+        }
+
+        canvas.addEventListener('mousedown', handleInput);
+        canvas.addEventListener('touchstart', handleInput, {passive: false});
+
+        /** GAME LOOP **/
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.score = 0;
+            gameState.round = 1;
+            gameState.timeLeft = CONFIG.initialTime;
+            gameState.particles = [];
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+            document.getElementById('score-display').innerText = `Score: 0`;
+            document.getElementById('round-display').innerText = `Round: 1`;
+
+            spawnBubbles();
+            requestAnimationFrame(loop);
+        }
+
+        function loop(timestamp) {
+            if (!gameState.isPlaying) return;
+
+            if (timestamp - gameState.lastTime > 1000) {
+                gameState.timeLeft--;
+                gameState.lastTime = timestamp;
+                updateTimerUI();
+                if (gameState.timeLeft <= 0) { endGame(); return; }
+            }
+
+            ctx.clearRect(0, 0, width, height);
+
+            gameState.bubbles.forEach(b => {
+                b.update();
+                b.draw(ctx);
+            });
+
+            gameState.particles.forEach((p, index) => {
+                p.update();
+                p.draw(ctx);
+                if (p.life <= 0) gameState.particles.splice(index, 1);
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        function updateTimerUI() {
+            const timerText = document.getElementById('timer-text');
+            const timerBar = document.getElementById('timer-bar');
+            
+            let displayTime = gameState.timeLeft;
+            if (displayTime > 60) {
+                const m = Math.floor(displayTime / 60);
+                const s = displayTime % 60;
+                displayTime = `${m}:${s.toString().padStart(2, '0')}`;
+            }
+            
+            timerText.textContent = displayTime;
+            const dashOffset = 283 - (283 * gameState.timeLeft / CONFIG.initialTime);
+            timerBar.style.strokeDashoffset = dashOffset;
+
+            if (gameState.timeLeft < 10) {
+                timerBar.style.stroke = '#F44336';
+                timerText.setAttribute('fill', '#F44336');
+            } else {
+                timerBar.style.stroke = '#a100ff';
+                timerText.setAttribute('fill', '#333');
+            }
+        }
+
+        function endGame() {
+            gameState.isPlaying = false;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `Final Score: ${gameState.score}`;
+        }
+
+        // Init
+        resize();
+    </script>
+</body>
+</html>
