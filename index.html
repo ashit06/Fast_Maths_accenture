@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Accenture Fast Math Assessment</title>
+    <title>Accenture Fast Math (Hard Mode)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
 
@@ -154,7 +154,6 @@
             display: block;
         }
         
-        /* Mobile tweaks */
         @media (max-height: 600px) {
             #instruction-container { top: 15%; }
             #timer-container { bottom: 10px; transform: translateX(-50%) scale(0.8); }
@@ -164,10 +163,8 @@
 </head>
 <body>
 
-    <!-- Canvas for Game Rendering -->
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Heads Up Display -->
     <div id="ui-layer">
         <div class="header-info">
             <div id="score-display">Score: 0</div>
@@ -186,20 +183,19 @@
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#e0e0e0" stroke-width="8" />
                 <circle id="timer-bar" cx="50" cy="50" r="45" fill="none" stroke="#a100ff" stroke-width="8" 
                         stroke-dasharray="283" stroke-dashoffset="0" transform="rotate(-90 50 50)" />
-                <text id="timer-text" x="50" y="58" text-anchor="middle" font-family="Roboto" font-size="24" fill="#333" font-weight="bold">300</text>
+                <text id="timer-text" x="50" y="58" text-anchor="middle" font-family="Roboto" font-size="24" fill="#333" font-weight="bold">15</text>
             </svg>
         </div>
     </div>
 
-    <!-- Start Screen -->
     <div id="start-screen" class="screen">
-        <h1>Fast Math Challenge</h1>
-        <p>Evaluate the bubbles and click them in the correct order.<br><br>
-           <strong>The Twist:</strong> The sorting rule changes! Watch the top panel for "Lowest to Highest" or "Highest to Lowest".</p>
-        <button onclick="startGame()">Start Assessment</button>
+        <h1>Fast Math: Hard Mode</h1>
+        <p><strong>15 Seconds Per Round.</strong><br><br>
+           Questions are tougher. No easy numbers.<br>
+           Clear the bubbles before the timer resets!</p>
+        <button onclick="startGame()">Start Challenge</button>
     </div>
 
-    <!-- Game Over Screen -->
     <div id="game-over-screen" class="screen hidden">
         <h1>Time's Up!</h1>
         <p id="final-score">Final Score: 0</p>
@@ -209,7 +205,7 @@
     <script>
         /** CONFIGURATION **/
         const CONFIG = {
-            initialTime: 300, // 5 minutes
+            roundTime: 15, // CHANGED: 15 seconds per round
             bubbleCount: 3, 
             colors: {
                 bubble: '#ffffff',
@@ -230,14 +226,14 @@
             isPlaying: false,
             score: 0,
             round: 1,
-            timeLeft: CONFIG.initialTime,
+            timeLeft: CONFIG.roundTime,
             bubbles: [],
             particles: [],
             sortOrder: 'asc',
             lastTime: 0
         };
 
-        /** RESIZE HANDLING - The Core of Responsiveness **/
+        /** RESIZE HANDLING **/
         function resize() {
             width = window.innerWidth;
             height = window.innerHeight;
@@ -248,63 +244,74 @@
         resize();
 
         /** LAYOUT CALCULATOR **/
-        // This ensures bubbles are always centered and form a nice shape relative to screen size
         function getBubblePosition(index, total) {
             const centerX = width / 2;
             const centerY = height / 2;
-            
-            // Determine a "safe zone" size based on the smaller screen dimension
-            // This prevents bubbles from being too spread out on wide screens
-            // or off-screen on small screens.
             const minDim = Math.min(width, height);
-            const spread = minDim * 0.25; // Distance from center
-            const verticalOffset = minDim * 0.05; // Shift slightly down to clear UI header
+            const spread = minDim * 0.25;
+            const verticalOffset = minDim * 0.05;
 
             if (total === 3) {
-                // Triangle Formation
                 if (index === 0) return { x: centerX, y: centerY - spread + verticalOffset }; // Top
                 if (index === 1) return { x: centerX - spread, y: centerY + (spread * 0.6) + verticalOffset }; // Bottom Left
                 if (index === 2) return { x: centerX + spread, y: centerY + (spread * 0.6) + verticalOffset }; // Bottom Right
             }
-            
-            // Fallback for other counts (just random within safe zone)
             return {
                 x: centerX + (Math.random() - 0.5) * spread * 2,
                 y: centerY + (Math.random() - 0.5) * spread * 2
             };
         }
 
-        /** MATH LOGIC **/
-        function generateMathExpression(difficulty) {
+        /** HARD MATH LOGIC **/
+        function generateMathExpression(round) {
             const ops = ['+', '-', '*', '/'];
             let val1, val2, op, value;
 
-            // Progression Logic
-            if (difficulty <= 3) {
-                value = Math.floor(Math.random() * 20) + 1;
-                return { text: value.toString(), value: value };
-            }
+            // --- CHANGED: DIFFICULTY SCALING (Medium to Tough) ---
             
-            if (difficulty <= 7) {
+            // Rounds 1-3: Medium (2-digit Add/Sub)
+            if (round <= 3) {
                 op = Math.random() > 0.5 ? '+' : '-';
-                val1 = Math.floor(Math.random() * 20) + 5;
-                val2 = Math.floor(Math.random() * 5) + 1;
-                value = op === '+' ? val1 + val2 : val1 - val2;
-                return { text: `${val1} ${op} ${val2}`, value: value };
+                if (op === '+') {
+                    val1 = Math.floor(Math.random() * 40) + 10; // 10 to 50
+                    val2 = Math.floor(Math.random() * 40) + 10; // 10 to 50
+                    value = val1 + val2;
+                } else {
+                    val1 = Math.floor(Math.random() * 50) + 20; // 20 to 70
+                    val2 = Math.floor(Math.random() * 15) + 5;  // 5 to 20
+                    value = val1 - val2;
+                }
+            } 
+            // Rounds 4-7: Hard (Multiplication & Division)
+            else if (round <= 7) {
+                op = Math.random() > 0.5 ? '*' : '/';
+                if (op === '*') {
+                    val1 = Math.floor(Math.random() * 12) + 3; // 3 to 15
+                    val2 = Math.floor(Math.random() * 9) + 2;  // 2 to 10
+                    value = val1 * val2;
+                } else {
+                    // Create clean division
+                    val2 = Math.floor(Math.random() * 8) + 2; // Divisor 2-9
+                    value = Math.floor(Math.random() * 12) + 2; // Answer 2-14
+                    val1 = value * val2; // Dividend
+                }
+            } 
+            // Rounds 8+: Tough (Larger mixed ops)
+            else {
+                let type = Math.random();
+                if (type < 0.33) { // Tough Add/Sub
+                    val1 = Math.floor(Math.random() * 100) + 50;
+                    val2 = Math.floor(Math.random() * 50) + 20;
+                    op = Math.random() > 0.5 ? '+' : '-';
+                    value = op === '+' ? val1 + val2 : val1 - val2;
+                } else { // Tough Mult
+                    op = '*';
+                    val1 = Math.floor(Math.random() * 15) + 5;
+                    val2 = Math.floor(Math.random() * 9) + 3;
+                    value = val1 * val2;
+                }
             }
 
-            op = ops[Math.floor(Math.random() * 4)];
-            if(op === '*') {
-                val1 = Math.floor(Math.random() * 9) + 2;
-                val2 = Math.floor(Math.random() * 5) + 2;
-                value = val1 * val2;
-            } else if (op === '/') {
-                val2 = Math.floor(Math.random() * 4) + 2;
-                value = Math.floor(Math.random() * 10) + 2;
-                val1 = value * val2;
-            } else {
-                return generateMathExpression(5);
-            }
             return { text: `${val1} ${op} ${val2}`, value: value };
         }
 
@@ -312,6 +319,10 @@
             gameState.bubbles = [];
             let usedValues = new Set();
 
+            // Reset Round Timer
+            gameState.timeLeft = CONFIG.roundTime;
+
+            // Randomize Rule
             gameState.sortOrder = Math.random() > 0.5 ? 'asc' : 'desc';
             updateRuleUI();
 
@@ -322,8 +333,6 @@
                 } while (usedValues.has(content.value));
                 
                 usedValues.add(content.value);
-                
-                // Pass the 'index' so the Bubble knows where it belongs in the formation
                 gameState.bubbles.push(new Bubble(i, content));
             }
         }
@@ -346,33 +355,27 @@
         /** CLASSES **/
         class Bubble {
             constructor(index, content) {
-                this.index = index; // Store index to calculate position dynamically
+                this.index = index;
                 this.content = content;
-                this.radius = 0; // Calculated dynamically
+                this.radius = 0;
                 this.color = CONFIG.colors.bubble;
                 this.scale = 0;
                 this.targetScale = 1;
                 this.shakeOffset = 0;
                 
-                // Set initial position
                 const pos = getBubblePosition(this.index, CONFIG.bubbleCount);
                 this.x = pos.x;
                 this.y = pos.y;
             }
 
             update() {
-                // 1. Dynamic Sizing: Bubble size depends on screen size
                 const minDim = Math.min(width, height);
-                this.radius = minDim * 0.13; // 13% of smallest screen dimension
+                this.radius = minDim * 0.13;
 
-                // 2. Dynamic Positioning: Always move to correct layout spot
                 const targetPos = getBubblePosition(this.index, CONFIG.bubbleCount);
-                
-                // Smooth lerp to position (in case of window resize)
                 this.x += (targetPos.x - this.x) * 0.2;
                 this.y += (targetPos.y - this.y) * 0.2;
 
-                // 3. Animation logic
                 if (this.scale < this.targetScale) this.scale += 0.1;
                 
                 if (Math.abs(this.shakeOffset) > 0) {
@@ -386,26 +389,21 @@
                 ctx.translate(this.x + this.shakeOffset, this.y);
                 ctx.scale(this.scale, this.scale);
 
-                // Shadow
                 ctx.beginPath();
                 ctx.arc(5, 5, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = CONFIG.colors.shadow;
                 ctx.fill();
 
-                // Bubble Body
                 ctx.beginPath();
                 ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
                 ctx.fillStyle = this.color;
                 ctx.fill();
                 
-                // Border
                 ctx.strokeStyle = '#e0e0e0';
                 ctx.lineWidth = 3;
                 ctx.stroke();
 
-                // Text
                 ctx.fillStyle = CONFIG.colors.text;
-                // Dynamic font size
                 const fontSize = Math.max(16, this.radius * 0.4); 
                 ctx.font = `bold ${fontSize}px Roboto`;
                 ctx.textAlign = 'center';
@@ -457,7 +455,6 @@
             let clientX, clientY;
 
             if (e.type === 'touchstart') {
-                // Prevent default to stop scrolling/zooming on double tap
                 e.preventDefault(); 
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
@@ -505,15 +502,18 @@
             if (gameState.bubbles.length === 0) {
                 gameState.round++;
                 document.getElementById('round-display').innerText = `Round: ${gameState.round}`;
+                // Immediately spawn next round and reset timer
                 spawnBubbles();
             }
         }
 
         function handleIncorrect(bubble) {
             bubble.triggerError();
-            gameState.timeLeft -= 3; 
+            // Penalty: Reduce time by 2 seconds
+            gameState.timeLeft = Math.max(0, gameState.timeLeft - 2); 
             gameState.score = Math.max(0, gameState.score - 5);
             document.getElementById('score-display').innerText = `Score: ${gameState.score}`;
+            updateTimerUI(); // Instant update
             
             ctx.fillStyle = "rgba(255,0,0,0.1)";
             ctx.fillRect(0,0,width,height);
@@ -527,7 +527,6 @@
             gameState.isPlaying = true;
             gameState.score = 0;
             gameState.round = 1;
-            gameState.timeLeft = CONFIG.initialTime;
             gameState.particles = [];
             
             document.getElementById('start-screen').classList.add('hidden');
@@ -569,18 +568,13 @@
             const timerText = document.getElementById('timer-text');
             const timerBar = document.getElementById('timer-bar');
             
-            let displayTime = gameState.timeLeft;
-            if (displayTime > 60) {
-                const m = Math.floor(displayTime / 60);
-                const s = displayTime % 60;
-                displayTime = `${m}:${s.toString().padStart(2, '0')}`;
-            }
+            timerText.textContent = gameState.timeLeft;
             
-            timerText.textContent = displayTime;
-            const dashOffset = 283 - (283 * gameState.timeLeft / CONFIG.initialTime);
+            // Calculate progress based on 15 second round
+            const dashOffset = 283 - (283 * gameState.timeLeft / CONFIG.roundTime);
             timerBar.style.strokeDashoffset = dashOffset;
 
-            if (gameState.timeLeft < 10) {
+            if (gameState.timeLeft < 5) {
                 timerBar.style.stroke = '#F44336';
                 timerText.setAttribute('fill', '#F44336');
             } else {
